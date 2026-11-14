@@ -1,3 +1,4 @@
+//Baically this file has routes i.e Url's where frontend will go and access the data
 const db = require("./database");//importing the database.js file
 const express = require("express");//importing express framework from web
 const cors = require("cors");//
@@ -137,6 +138,38 @@ app.delete("/api/animals/:id", (req, res) => {
         message: "Animal marked as inactive."
     });
 });
+//To get/retrieve the animal heath records
+app.get("/api/animals/:id/health-records", (req, res) => {
+    const animalId = Number(req.params.id);
+
+    if (!Number.isInteger(animalId) || animalId <= 0) {
+        return res.status(400).json({
+            message: "Invalid animal ID."
+        });
+    }
+
+    const animal = db.prepare(`
+        SELECT id FROM animals
+        WHERE id = ? AND is_active = 1
+    `).get(animalId);
+
+    if (!animal) {
+        return res.status(404).json({
+            message: "Active animal not found."
+        });
+    }
+
+    const records = db.prepare(`
+        SELECT *
+        FROM health_records
+        WHERE animal_id = ?
+        AND is_active=1
+        ORDER BY record_date DESC, id DESC
+    `).all(animalId);
+
+    res.status(200).json(records);
+});
+
 
 //Adding healh records for each animal
 app.post("/api/animals/:id/health-records", (req, res) => {
@@ -225,8 +258,120 @@ app.post("/api/animals/:id/health-records", (req, res) => {
         animal_id: animalId
     });
 });
-//To get/retrieve the animal heath records
-app.get("/api/animals/:id/health-records", (req, res) => {
+
+
+//to update existing health-records
+app.patch("/api/health-records/:id", (req, res) => {
+
+    const recordId = Number(req.params.id);
+
+    if (!Number.isInteger(recordId) || recordId <= 0) {
+        return res.status(400).json({
+            message: "Invalid health record ID."
+        });
+    }
+
+    const existingRecord = db.prepare(`
+    SELECT health_records.id
+    FROM health_records
+    JOIN animals
+    ON health_records.animal_id = animals.id
+    WHERE health_records.id = ?
+    AND animals.is_active = 1
+`).get(recordId);
+
+    if (!existingRecord) {
+        return res.status(404).json({
+            message: "Health record not found or animal is inactive."
+        });
+    }
+
+    const {
+        record_date,
+        symptoms,
+        diagnosis,
+        treatment,
+        vet_name
+    } = req.body;
+
+    if (
+        typeof record_date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(record_date) ||
+        typeof symptoms !== "string" ||
+        !symptoms.trim()
+    ) {
+        return res.status(400).json({
+            message: "Valid record date and symptoms are required."
+        });
+    }
+
+    const result = db.prepare(`
+        UPDATE health_records
+        SET record_date = ?,
+            symptoms = ?,
+            diagnosis = ?,
+            treatment = ?,
+            vet_name = ?
+        WHERE id = ?
+    `).run(
+        record_date,
+        symptoms.trim(),
+        diagnosis?.trim() || null,
+        treatment?.trim() || null,
+        vet_name?.trim() || null,
+        recordId
+    );
+
+    res.json({
+        message: "Health record updated successfully.",
+        id: recordId
+    });
+});
+
+//To delete an animal's health record
+app.delete("/api/health-records/:id", (req, res) => {
+
+    // 1. Get health record ID
+    const recordId = Number(req.params.id);
+
+    // 2. Validate ID
+    if (!Number.isInteger(recordId) || recordId <= 0) {
+        return res.status(400).json({
+            message: "Invalid health record ID."
+        });
+    }
+
+    // 3. Check whether record exists and its animal is active
+    const existingRecord = db.prepare(`
+        SELECT health_records.id
+        FROM health_records
+        JOIN animals
+        ON health_records.animal_id = animals.id
+        WHERE health_records.id = ?
+        AND animals.is_active = 1
+    `).get(recordId);
+
+    if (!existingRecord) {
+        return res.status(404).json({
+            message: "Health record not found or animal is inactive."
+        });
+    }
+
+    // 4. Delete the health record
+    db.prepare(`
+        UPDATE health_records
+        SET is_active=0
+        WHERE id = ?
+    `).run(recordId);
+
+    // 5. Send response
+    res.json({
+        message: "Health record deleted successfully.",
+        id: recordId
+    });
+});
+//to see an animal's health record to trash
+app.get("/api/animals/:id/health-records/trash", (req, res) => {
     const animalId = Number(req.params.id);
 
     if (!Number.isInteger(animalId) || animalId <= 0) {
@@ -250,13 +395,88 @@ app.get("/api/animals/:id/health-records", (req, res) => {
         SELECT *
         FROM health_records
         WHERE animal_id = ?
-        AND is_active=1
+        AND is_active = 0
         ORDER BY record_date DESC, id DESC
     `).all(animalId);
 
     res.status(200).json(records);
 });
 
+//to restore an animal's health record
+app.patch("/api/health-records/:id/restore", (req, res) => {
+    const recordId = Number(req.params.id);
+
+    if (!Number.isInteger(recordId) || recordId <= 0) {
+        return res.status(400).json({
+            message: "Invalid Health Record ID."
+        });
+    }
+
+    const existingRecord = db.prepare(`
+        SELECT health_records.id
+        FROM health_records
+        JOIN animals
+        ON health_records.animal_id = animals.id
+        WHERE health_records.id = ?
+        AND animals.is_active = 1
+        AND health_records.is_active = 0
+    `).get(recordId);
+
+    if (!existingRecord) {
+        return res.status(404).json({
+            message: "Deleted health record not found or animal is inactive."
+        });
+    }
+
+    db.prepare(`
+        UPDATE health_records
+        SET is_active = 1
+        WHERE id = ?
+    `).run(recordId);
+
+    res.json({
+        message: "Health Record Restored Successfully!",
+        id: recordId
+    });
+});
+
+
+//To get/retrieve vaccination records
+app.get("/api/animals/:id/vaccinations", (req, res) => {
+    // 1. Get animal ID
+    const animalId = Number(req.params.id);
+
+    // 2. Validate ID
+    if (!Number.isInteger(animalId) || animalId <= 0) {
+        return res.status(400).json({
+            message: "Invalid animal ID."
+        });
+    }
+
+    // 3. Check whether animal exists and is active
+    const animal = db.prepare(`
+        SELECT id FROM animals
+        WHERE id = ? AND is_active = 1
+    `).get(animalId);
+
+    if (!animal) {
+        return res.status(404).json({
+            message: "Active animal not found."
+        });
+    }
+
+    // 4. Fetch vaccination history
+    const records = db.prepare(`
+        SELECT *
+        FROM vaccination_records
+        WHERE animal_id = ?
+        AND is_active=1
+        ORDER BY vaccination_date DESC, id DESC
+    `).all(animalId);
+
+    // 5. Return records
+    res.status(200).json(records);
+});
 //to input vaccination records
 app.post("/api/animals/:id/vaccinations", (req, res) => {
     // 1. Get animal ID
@@ -369,192 +589,6 @@ app.post("/api/animals/:id/vaccinations", (req, res) => {
         message: "Vaccination record added successfully!",
         id: result.lastInsertRowid,
         animal_id: animalId
-    });
-});
-
-
-//To get/retrieve vaccination records
-app.get("/api/animals/:id/vaccinations", (req, res) => {
-    // 1. Get animal ID
-    const animalId = Number(req.params.id);
-
-    // 2. Validate ID
-    if (!Number.isInteger(animalId) || animalId <= 0) {
-        return res.status(400).json({
-            message: "Invalid animal ID."
-        });
-    }
-
-    // 3. Check whether animal exists and is active
-    const animal = db.prepare(`
-        SELECT id FROM animals
-        WHERE id = ? AND is_active = 1
-    `).get(animalId);
-
-    if (!animal) {
-        return res.status(404).json({
-            message: "Active animal not found."
-        });
-    }
-
-    // 4. Fetch vaccination history
-    const records = db.prepare(`
-        SELECT *
-        FROM vaccination_records
-        WHERE animal_id = ?
-        AND is_active=1
-        ORDER BY vaccination_date DESC, id DESC
-    `).all(animalId);
-
-    // 5. Return records
-    res.status(200).json(records);
-});
-
-//to update existing health-records
-app.patch("/api/health-records/:id", (req, res) => {
-
-    const recordId = Number(req.params.id);
-
-    if (!Number.isInteger(recordId) || recordId <= 0) {
-        return res.status(400).json({
-            message: "Invalid health record ID."
-        });
-    }
-
-    const existingRecord = db.prepare(`
-    SELECT health_records.id
-    FROM health_records
-    JOIN animals
-    ON health_records.animal_id = animals.id
-    WHERE health_records.id = ?
-    AND animals.is_active = 1
-`).get(recordId);
-
-    if (!existingRecord) {
-        return res.status(404).json({
-            message: "Health record not found or animal is inactive."
-        });
-    }
-
-    const {
-        record_date,
-        symptoms,
-        diagnosis,
-        treatment,
-        vet_name
-    } = req.body;
-
-    if (
-        typeof record_date !== "string" ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(record_date) ||
-        typeof symptoms !== "string" ||
-        !symptoms.trim()
-    ) {
-        return res.status(400).json({
-            message: "Valid record date and symptoms are required."
-        });
-    }
-
-    const result = db.prepare(`
-        UPDATE health_records
-        SET record_date = ?,
-            symptoms = ?,
-            diagnosis = ?,
-            treatment = ?,
-            vet_name = ?
-        WHERE id = ?
-    `).run(
-        record_date,
-        symptoms.trim(),
-        diagnosis?.trim() || null,
-        treatment?.trim() || null,
-        vet_name?.trim() || null,
-        recordId
-    );
-
-    res.json({
-        message: "Health record updated successfully.",
-        id: recordId
-    });
-});
-
-//To delete an animal's health record
-app.delete("/api/health-records/:id", (req, res) => {
-
-    // 1. Get health record ID
-    const recordId = Number(req.params.id);
-
-    // 2. Validate ID
-    if (!Number.isInteger(recordId) || recordId <= 0) {
-        return res.status(400).json({
-            message: "Invalid health record ID."
-        });
-    }
-
-    // 3. Check whether record exists and its animal is active
-    const existingRecord = db.prepare(`
-        SELECT health_records.id
-        FROM health_records
-        JOIN animals
-        ON health_records.animal_id = animals.id
-        WHERE health_records.id = ?
-        AND animals.is_active = 1
-    `).get(recordId);
-
-    if (!existingRecord) {
-        return res.status(404).json({
-            message: "Health record not found or animal is inactive."
-        });
-    }
-
-    // 4. Delete the health record
-    db.prepare(`
-        UPDATE health_records
-        SET is_active=0
-        WHERE id = ?
-    `).run(recordId);
-
-    // 5. Send response
-    res.json({
-        message: "Health record deleted successfully.",
-        id: recordId
-    });
-});
-//to delete vaccination records
-app.delete("/api/vaccinations/:id", (req, res) => {
-    const recordId = Number(req.params.id);
-
-    if (!Number.isInteger(recordId) || recordId <= 0) {
-        return res.status(400).json({
-            message: "Invalid Health Record ID."
-        });
-    }
-    //getting the recordidt
-    const existingRecord = db.prepare(`
-        SELECT vaccination_records.id
-        FROM vaccination_records
-        JOIN animals
-        ON vaccination_records.animal_id=animal_id
-        WHERE vaccination_records.id=?
-        AND animals.is_active=1
-    `).get(recordId);
-    //checking if record exists
-    if (!existingRecord) {
-        return res.status(404).json({
-            message: "Vaccination Record not Found"
-        });
-    }
-    //delete record
-    db.prepare(`
-        UPDATE vaccination_records
-        SET is_active=0
-        WHERE id=?
-    `).run(recordId);
-    //response
-    res.json({
-        message: "Vaccination Record Deleted Successfully!",
-        id: recordId
-
     });
 });
 
@@ -683,39 +717,44 @@ app.patch("/api/vaccinations/:id", (req, res) => {
     });
 });
 
-//to move an animal's health record to trash
-app.get("/api/animals/:id/health-records/trash", (req, res) => {
-    const animalId = Number(req.params.id);
+//to delete vaccination records
+app.delete("/api/vaccinations/:id", (req, res) => {
+    const recordId = Number(req.params.id);
 
-    if (!Number.isInteger(animalId) || animalId <= 0) {
+    if (!Number.isInteger(recordId) || recordId <= 0) {
         return res.status(400).json({
-            message: "Invalid animal ID."
+            message: "Invalid Health Record ID."
         });
     }
-
-    const animal = db.prepare(`
-        SELECT id FROM animals
-        WHERE id = ? AND is_active = 1
-    `).get(animalId);
-
-    if (!animal) {
+    //getting the recordidt
+    const existingRecord = db.prepare(`
+        SELECT vaccination_records.id
+        FROM vaccination_records
+        JOIN animals
+        ON vaccination_records.animal_id=animals_id
+        WHERE vaccination_records.id=?
+        AND animals.is_active=1
+    `).get(recordId);
+    //checking if record exists
+    if (!existingRecord) {
         return res.status(404).json({
-            message: "Active animal not found."
+            message: "Vaccination Record not Found"
         });
     }
+    //delete record
+    db.prepare(`
+        UPDATE vaccination_records
+        SET is_active=0
+        WHERE id=?
+    `).run(recordId);
+    //response
+    res.json({
+        message: "Vaccination Record Deleted Successfully!",
+        id: recordId
 
-    const records = db.prepare(`
-        SELECT *
-        FROM health_records
-        WHERE animal_id = ?
-        AND is_active = 0
-        ORDER BY record_date DESC, id DESC
-    `).all(animalId);
-
-    res.status(200).json(records);
+    });
 });
-
-//to move an  animal's vaccination record to trash
+//to see an animal's vaccination record to trash
 app.get("/api/animals/:id/vaccinations/trash", (req, res) => {
     const animalID = Number(req.params.id);
 
@@ -745,43 +784,7 @@ app.get("/api/animals/:id/vaccinations/trash", (req, res) => {
     res.status(200).json(records);
 
 });
-//to restore an animal's health record
-app.patch("/api/health-records/:id/restore", (req, res) => {
-    const recordId = Number(req.params.id);
 
-    if (!Number.isInteger(recordId) || recordId <= 0) {
-        return res.status(400).json({
-            message: "Invalid Health Record ID."
-        });
-    }
-
-    const existingRecord = db.prepare(`
-        SELECT health_records.id
-        FROM health_records
-        JOIN animals
-        ON health_records.animal_id = animals.id
-        WHERE health_records.id = ?
-        AND animals.is_active = 1
-        AND health_records.is_active = 0
-    `).get(recordId);
-
-    if (!existingRecord) {
-        return res.status(404).json({
-            message: "Deleted health record not found or animal is inactive."
-        });
-    }
-
-    db.prepare(`
-        UPDATE health_records
-        SET is_active = 1
-        WHERE id = ?
-    `).run(recordId);
-
-    res.json({
-        message: "Health Record Restored Successfully!",
-        id: recordId
-    });
-});
 //to restore animal's vaccination records
 app.patch("/api/vaccination_records/:id/restore", (req, res) => {
     const recordId = Number(req.params.id);
@@ -819,6 +822,9 @@ app.patch("/api/vaccination_records/:id/restore", (req, res) => {
         });
 
 });
+
+
+
 //vaccination overview of all the animals
 app.get("/api/vaccinations/overview", (req, res) => {
 
@@ -879,7 +885,7 @@ app.get("/api/vaccinations/overview", (req, res) => {
 
             COALESCE(SUM(
                 CASE
-             \      WHEN l.next_due_date >
+                    WHEN l.next_due_date >
                         date('now', 'localtime', '+30 days')
                     THEN 1 ELSE 0
                 END
