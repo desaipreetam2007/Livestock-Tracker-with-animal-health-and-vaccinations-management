@@ -6,7 +6,7 @@ const app = express();//loading express onto app variable so we can use app word
 const PORT = 3000;
 
 app.use(cors({
-    origin: ["http://127.0.0.1:3001", "http://127.0.0.1:3000", "http://127.0.0.1:8080","http://192.168.0.159:8080"],
+    origin: ["http://127.0.0.1:3001", "http://127.0.0.1:3000", "http://127.0.0.1:8080","http://192.168.0.159:8080","http://10.123.9.1:8080"],
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type"]
 }));

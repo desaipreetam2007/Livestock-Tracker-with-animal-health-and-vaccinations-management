@@ -1,3 +1,5 @@
+
+
 //To register an animal
 const animalForm = document.querySelector("#animalForm");
 const message = document.querySelector("#message");
@@ -195,6 +197,49 @@ async function loadAnimals() {
             const viewButton = document.createElement("button");
             viewButton.type = "button";
             viewButton.textContent = "View Details";
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Delete";
+
+            //to delete an animal
+            deleteButton.addEventListener("click", async event => {
+                event.preventDefault();
+                deleteButton.disabled=true;
+                deleteButton.textContent="Deleting";
+
+                const confirmed = confirm("Are you Sure you want to delete ${animal.name}?");
+
+                if (!confirmed) {
+                    return;
+                }
+                try {
+                    const response = await fetch(
+                        `${API_BASE_URL}/api/animals/${animal.id}`,
+                        {
+                            method: "DELETE"
+                        }
+                    );
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || "Could not delete the animal")
+                    }
+                    alert("${animal.name} deleted Succesfully");
+
+                    await loadAnimals();
+
+                }
+                catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                    deleteButton.disabled=false;
+                    deleteButton.textContent="Delete";
+                }
+
+
+            });
+
+            
 
             const healthButton = document.createElement("button");
             healthButton.type = "button";
@@ -639,6 +684,7 @@ async function loadAnimals() {
                 //buttons
                 viewButton,
                 editButton,
+                deleteButton,
                 healthButton,
                 vaccinationButton,
                 addHealthButton,
@@ -1313,8 +1359,8 @@ async function loadVaccinationTrashRecords(animalID, trashContainer, vaccination
             recordCard.append(vaccine_name, vaccination_date, next_due_date, vet_name, notes, restoreButton);
             trashContainer.append(recordCard);
 
-            if(record!==records[records.length-1]){
-                const seperator=document.createElement("hr");
+            if (record !== records[records.length - 1]) {
+                const seperator = document.createElement("hr");
                 trashContainer.append(seperator);
             }
         }
@@ -1324,6 +1370,7 @@ async function loadVaccinationTrashRecords(animalID, trashContainer, vaccination
         console.log(error);
         trashContainer.textContent = `Error:${error.message}`;
     }
+
 }
 
 
