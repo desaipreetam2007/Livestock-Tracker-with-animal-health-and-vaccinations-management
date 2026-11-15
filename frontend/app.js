@@ -165,9 +165,26 @@ async function loadVaccinationOverview() {
 const refreshAnimals = document.querySelector("#refreshAnimals");
 const animalListMessage = document.querySelector("#animalListMessage");
 const animalList = document.querySelector("#animalList");
+// Elements used for displaying and managing deleted animals.
+const showAnimalTrash = document.querySelector("#showAnimalTrash");
+const animalTrashContainer = document.querySelector("#animalTrashContainer");
 
 // Reload the active animal list when the user clicks Refresh Animals.
 refreshAnimals.addEventListener("click", loadAnimals);
+// Show or hide the recently deleted animals section.
+showAnimalTrash.addEventListener("click", async () => {
+    console.log("Recently Deleted button clicked!");
+    if (!animalTrashContainer.hidden) {
+        animalTrashContainer.hidden = true;
+        showAnimalTrash.textContent = "Recently Deleted Animals";
+        return;
+    }
+
+    animalTrashContainer.hidden = false;
+    showAnimalTrash.textContent = "Hide Deleted Animals";
+
+    await loadAnimalTrash();
+});
 
 // Fetches active animals and creates an interactive card for each result.
 async function loadAnimals() {
@@ -734,7 +751,112 @@ async function loadAnimals() {
         refreshAnimals.disabled = false;
     }
 }
+// Fetch and display all deleted animals.
+async function loadAnimalTrash() {
+    animalTrashContainer.replaceChildren();
 
+    const heading = document.createElement("h3");
+    heading.textContent = "Recently Deleted Animals";
+
+    const message = document.createElement("p");
+    message.textContent = "Loading deleted animals...";
+
+    animalTrashContainer.append(heading, message);
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/animals/trash`
+        );
+
+        const animals = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                "Failed to load deleted animals."
+            );
+        }
+
+        if (!Array.isArray(animals)) {
+            throw new Error("Unexpected API response.");
+        }
+
+        message.remove();
+
+        if (animals.length === 0) {
+            message.textContent = "No deleted animals found.";
+            animalTrashContainer.append(message);
+            return;
+        }
+
+        for (const animal of animals) {
+            const card = document.createElement("div");
+
+            const animalName = document.createElement("h4");
+            animalName.textContent = animal.name;
+
+            const animalDetails = document.createElement("p");
+            animalDetails.textContent =
+                `Type: ${animal.type} | ` +
+                `Breed: ${animal.breed} | ` +
+                `ID: ${animal.id}`;
+
+            // Button used to restore the deleted animal.
+            const restoreButton = document.createElement("button");
+            restoreButton.type = "button";
+            restoreButton.textContent = "Restore";
+
+            // Restore the animal when the button is clicked.
+            restoreButton.addEventListener("click", async () => {
+                const confirmed = confirm(
+                    `Are you sure you want to restore ${animal.name}?`
+                );
+
+                if (!confirmed) {
+                    return;
+                }
+                restoreButton.disabled = true;
+                restoreButton.textContent = "Restoring...";
+
+                try {
+                    const response = await fetch(
+                        `${API_BASE_URL}/api/animals/${animal.id}/restore`,
+                        {
+                            method: "PATCH"
+                        }
+                    );
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(
+                            result.message || "Failed to restore animal."
+                        );
+                    }
+
+                    alert(`${animal.name} restored successfully!`);
+
+                    // Refresh both active and deleted animal lists.
+                    await loadAnimals();
+                    await loadAnimalTrash();
+
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+
+                    restoreButton.disabled = false;
+                    restoreButton.textContent = "Restore";
+                }
+            });
+
+            card.append(animalName, animalDetails, restoreButton);
+            animalTrashContainer.append(card);
+        }
+
+    } catch (error) {
+        console.error(error);
+        message.textContent = `Error: ${error.message}`;
+    }
+}
 // ============================================================
 // 4. LOAD INDIVIDUAL ANIMAL DETAILS
 // Fetches and displays details for one animal using its ID.
