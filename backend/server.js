@@ -20,6 +20,15 @@ app.get("/api/animals", (req, res) => {
     const animals = db.prepare(`Select * FROM animals WHERE is_active=1`).all();
     res.json(animals);
 });
+// To get all deleted animals
+app.get("/api/animals/trash", (req, res) => {
+    const animals = db.prepare(`
+        SELECT * FROM animals
+        WHERE is_active = 0
+    `).all();
+
+    res.json(animals);
+});
 //To get specific animal using id
 app.get("/api/animals/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -136,6 +145,32 @@ app.delete("/api/animals/:id", (req, res) => {
 
     res.json({
         message: "Animal marked as inactive."
+    });
+});
+// To restore a deleted animal
+app.patch("/api/animals/:id/restore", (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            message: "Invalid animal ID."
+        });
+    }
+
+    const result = db.prepare(`
+        UPDATE animals
+        SET is_active = 1
+        WHERE id = ? AND is_active = 0
+    `).run(id);
+
+    if (result.changes === 0) {
+        return res.status(404).json({
+            message: "Deleted animal not found."
+        });
+    }
+
+    res.json({
+        message: "Animal restored successfully!"
     });
 });
 //To get/retrieve the animal heath records

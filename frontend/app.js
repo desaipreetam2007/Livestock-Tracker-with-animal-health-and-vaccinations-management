@@ -1,10 +1,16 @@
 
 
-//To register an animal
+// ============================================================
+// 1. ANIMAL REGISTRATION
+// Handles registration form submission and sends new animal data to the API.
+// ============================================================
+// To register an animal
 const animalForm = document.querySelector("#animalForm");
 const message = document.querySelector("#message");
+// Express backend address. Update this IP if the Mac joins a different network.
 const API_BASE_URL = "http://192.168.0.159:3000";
 
+// Intercept submission to send JSON to the backend without reloading the page.
 animalForm.addEventListener("submit", async (event) => {
 
     event.preventDefault();
@@ -48,14 +54,20 @@ animalForm.addEventListener("submit", async (event) => {
     }
 });
 
-//Refresh vaccination page button
+// ============================================================
+// 2. VACCINATION OVERVIEW
+// Loads and displays vaccination status totals across active animals.
+// ============================================================
+// Refresh vaccination page button
 const refreshVaccinations = document.querySelector("#refreshVaccinations");
 const vaccinationMessage = document.querySelector("#vaccinationMessage");
 const vaccinationSummary = document.querySelector("#vaccinationSummary");
 const vaccinationList = document.querySelector("#vaccinationList");
 //executes when we click refresh overview button
+// Load the overview when the user clicks Refresh Overview.
 refreshVaccinations.addEventListener("click", loadVaccinationOverview);
 
+// Fetches the overview, calculates totals, and renders one summary card per animal.
 async function loadVaccinationOverview() {
     vaccinationMessage.textContent = "Loading vaccination overview...";
     vaccinationSummary.replaceChildren();
@@ -145,13 +157,19 @@ async function loadVaccinationOverview() {
     }
 }
 
-//Refresh Animal details button
+// ============================================================
+// 3. ANIMAL LIST AND ANIMAL CARD ACTIONS
+// Loads active animals and builds the controls/forms for each animal.
+// ============================================================
+// Refresh Animal details button
 const refreshAnimals = document.querySelector("#refreshAnimals");
 const animalListMessage = document.querySelector("#animalListMessage");
 const animalList = document.querySelector("#animalList");
 
+// Reload the active animal list when the user clicks Refresh Animals.
 refreshAnimals.addEventListener("click", loadAnimals);
 
+// Fetches active animals and creates an interactive card for each result.
 async function loadAnimals() {
     console.log("loadanimals() called");
     animalListMessage.textContent = "Loading animals...";
@@ -202,17 +220,22 @@ async function loadAnimals() {
             deleteButton.type = "button";
             deleteButton.textContent = "Delete";
 
-            //to delete an animal
+            // Deletes an animal using soft deletion.
+            // The confirmation is shown before disabling the button.
             deleteButton.addEventListener("click", async event => {
                 event.preventDefault();
-                deleteButton.disabled=true;
-                deleteButton.textContent="Deleting";
 
-                const confirmed = confirm("Are you Sure you want to delete ${animal.name}?");
+                const confirmed = confirm(
+                    `Are you sure you want to delete ${animal.name}?`
+                );
 
                 if (!confirmed) {
                     return;
                 }
+
+                deleteButton.disabled = true;
+                deleteButton.textContent = "Deleting...";
+
                 try {
                     const response = await fetch(
                         `${API_BASE_URL}/api/animals/${animal.id}`,
@@ -220,26 +243,27 @@ async function loadAnimals() {
                             method: "DELETE"
                         }
                     );
+
                     const result = await response.json();
+
                     if (!response.ok) {
-                        throw new Error(result.message || "Could not delete the animal")
+                        throw new Error(
+                            result.message || "Could not delete the animal"
+                        );
                     }
-                    alert("${animal.name} deleted Succesfully");
+
+                    alert(`${animal.name} deleted successfully.`);
 
                     await loadAnimals();
 
-                }
-                catch (error) {
+                } catch (error) {
                     console.error(error);
                     alert(error.message);
-                    deleteButton.disabled=false;
-                    deleteButton.textContent="Delete";
+
+                    deleteButton.disabled = false;
+                    deleteButton.textContent = "Delete";
                 }
-
-
             });
-
-            
 
             const healthButton = document.createElement("button");
             healthButton.type = "button";
@@ -255,14 +279,12 @@ async function loadAnimals() {
             const addHealthContainer = document.createElement("div");
             addHealthContainer.hidden = true;
 
-
             const vaccinationButton = document.createElement("button");
             vaccinationButton.type = "button";
             vaccinationButton.textContent = "View Vaccination History";
 
             const vaccinationContainer = document.createElement("div");
             vaccinationContainer.hidden = true;
-
 
             const addVaccinationButton = document.createElement("button");
             addVaccinationButton.type = "button";
@@ -271,7 +293,7 @@ async function loadAnimals() {
             const addVaccinationContainer = document.createElement("div");
             addVaccinationContainer.hidden = true;
 
-            //for inputting health record details
+            // Form used to enter a new health record for this animal.
             const healthForm = document.createElement("form");
 
             healthForm.innerHTML = `
@@ -304,8 +326,10 @@ async function loadAnimals() {
 
                  <button type="submit">Save Health Record</button>
                     `;
+
             addHealthContainer.append(healthForm);
-            //for inputting vaccination record details
+
+            // Form used to enter a new vaccination record for this animal.
             const VaccinationForm = document.createElement("form");
 
             VaccinationForm.innerHTML = `
@@ -338,10 +362,10 @@ async function loadAnimals() {
 
                  <button type="submit">Save Vaccination Record</button>
                     `;
+
             addVaccinationContainer.append(VaccinationForm);
 
-
-            //executes when we click add health record button
+            // Show or hide the Add Health Record form.
             addHealthButton.addEventListener("click", () => {
                 if (!addHealthContainer.hidden) {
                     addHealthContainer.hidden = true;
@@ -352,7 +376,8 @@ async function loadAnimals() {
                 addHealthContainer.hidden = false;
                 addHealthButton.textContent = "Cancel";
             });
-            //executes when we click add vaccination record button
+
+            // Show or hide the Add Vaccination Record form.
             addVaccinationButton.addEventListener("click", () => {
                 if (!addVaccinationContainer.hidden) {
                     addVaccinationContainer.hidden = true;
@@ -362,9 +387,9 @@ async function loadAnimals() {
 
                 addVaccinationContainer.hidden = false;
                 addVaccinationButton.textContent = "Cancel";
-
             });
-            //executes when we click view vaccination history button
+
+            // Show or hide vaccination history for the selected animal.
             vaccinationButton.addEventListener("click", async () => {
                 if (!vaccinationContainer.hidden) {
                     vaccinationContainer.hidden = true;
@@ -378,7 +403,7 @@ async function loadAnimals() {
                 await loadVaccinationRecords(animal.id, vaccinationContainer);
             });
 
-            //executes when we click view health records button
+            // Show or hide health records for the selected animal.
             healthButton.addEventListener("click", async () => {
                 if (!healthContainer.hidden) {
                     healthContainer.hidden = true;
@@ -392,8 +417,7 @@ async function loadAnimals() {
                 await loadHealthRecords(animal.id, healthContainer);
             });
 
-
-            //executes when we submit the health records form
+            // Handle submission of a new health record.
             healthForm.addEventListener("submit", async (event) => {
                 event.preventDefault();
 
@@ -422,9 +446,10 @@ async function loadAnimals() {
                     const result = await response.json();
 
                     if (!response.ok) {
-                        throw new Error(result.message || "Failed to save Health record");
+                        throw new Error(
+                            result.message || "Failed to save Health record"
+                        );
                     }
-
 
                     alert("Health record saved successfully!");
 
@@ -440,7 +465,7 @@ async function loadAnimals() {
                 }
             });
 
-            //executes when we submit the vaccination records form
+            // Handle submission of a new vaccination record.
             VaccinationForm.addEventListener("submit", async (event) => {
                 event.preventDefault();
 
@@ -466,11 +491,12 @@ async function loadAnimals() {
                         }
                     );
 
-
                     const result = await response.json();
 
                     if (!response.ok) {
-                        throw new Error(result.message || "Failed to save vaccination record");
+                        throw new Error(
+                            result.message || "Failed to save vaccination record"
+                        );
                     }
 
                     alert("Vaccination record saved successfully!");
@@ -486,10 +512,7 @@ async function loadAnimals() {
                     alert(error.message);
                 }
             });
-
-
-
-
+            // Button and container for editing the animal's details.
             const editButton = document.createElement("button");
             editButton.textContent = "Edit";
 
@@ -499,9 +522,9 @@ async function loadAnimals() {
             const editMessage = document.createElement("p");
             editMessage.setAttribute("aria-live", "polite");
 
-
+            // Create and display the animal edit form when Edit is clicked.
             editButton.addEventListener("click", () => {
-                // Toggle the edit form
+                // Toggle the edit form.
                 if (!editContainer.hidden) {
                     editContainer.hidden = true;
                     return;
@@ -585,8 +608,7 @@ async function loadAnimals() {
                     cancelButton
                 );
 
-                // Prevent form from reloading the page
-
+                // Prevent the browser from reloading the page on submission.
                 editForm.addEventListener("submit", async (event) => {
                     event.preventDefault();
 
@@ -619,7 +641,7 @@ async function loadAnimals() {
                             );
                         }
 
-                        // Update the displayed card
+                        // Update the displayed card with the saved values.
                         animal.name = updatedAnimal.name;
                         animal.type = updatedAnimal.type;
                         animal.breed = updatedAnimal.breed;
@@ -633,15 +655,14 @@ async function loadAnimals() {
 
                         editContainer.hidden = true;
 
-                        // Update the details if already loaded
+                        // Refresh the details if they are already open.
                         if (!detailsContainer.hidden) {
                             await loadAnimalDetails(animal.id, detailsContainer);
                         }
 
-                        // Update the button state
                         editButton.textContent = "Edit";
 
-                        // Simple success feedback
+                        // Display success feedback.
                         editMessage.textContent = "Animal updated successfully.";
 
                     } catch (error) {
@@ -653,35 +674,36 @@ async function loadAnimals() {
                     }
                 });
 
-
                 editContainer.append(editForm);
                 editContainer.hidden = false;
             });
 
+            // Container where the selected animal's details will appear.
             const detailsContainer = document.createElement("div");
             detailsContainer.hidden = true;
 
-
+            // Show or hide the selected animal's details.
             viewButton.addEventListener("click", async () => {
 
-                // If details are already open, close them
+                // If details are already open, close them.
                 if (!detailsContainer.hidden) {
                     detailsContainer.hidden = true;
                     viewButton.textContent = "View Details";
                     return;
                 }
 
-                // Otherwise, open the details
+                // Otherwise, open the details and fetch them from the API.
                 viewButton.textContent = "Hide Details";
                 await loadAnimalDetails(animal.id, detailsContainer);
             });
 
-
+            // Add all buttons and their corresponding content containers
+            // to the animal card.
             card.append(
                 heading,
                 details,
 
-                //buttons
+                // Buttons
                 viewButton,
                 editButton,
                 deleteButton,
@@ -689,7 +711,8 @@ async function loadAnimals() {
                 vaccinationButton,
                 addHealthButton,
                 addVaccinationButton,
-                //containers to display the info
+
+                // Containers used to display information and forms
                 detailsContainer,
                 healthContainer,
                 vaccinationContainer,
@@ -712,9 +735,10 @@ async function loadAnimals() {
     }
 }
 
-
-
-//to load animal specific animal detail when 'view details' button is clicked
+// ============================================================
+// 4. LOAD INDIVIDUAL ANIMAL DETAILS
+// Fetches and displays details for one animal using its ID.
+// ============================================================
 async function loadAnimalDetails(id, detailsContainer) {
     detailsContainer.hidden = false;
     detailsContainer.textContent = "Loading animal details...";
@@ -760,7 +784,11 @@ async function loadAnimalDetails(id, detailsContainer) {
             `Error: ${error.message}`;
     }
 }
-//to load specific animal's health records detail when 'view health records' button is clicked
+
+// ============================================================
+// 5. HEALTH RECORDS
+// Loads active health records belonging to a selected animal.
+// ============================================================
 async function loadHealthRecords(animalId, healthContainer) {
     healthContainer.textContent = "Loading health records...";
 
@@ -788,6 +816,7 @@ async function loadHealthRecords(animalId, healthContainer) {
         const trashContainer = document.createElement("div");
         trashContainer.hidden = true;
 
+        // Toggle the recently deleted health records section.
         trashButton.addEventListener("click", async () => {
             if (!trashContainer.hidden) {
                 trashContainer.hidden = true;
@@ -801,16 +830,12 @@ async function loadHealthRecords(animalId, healthContainer) {
             await loadHealthTrash(animalId, trashContainer, healthContainer);
         });
 
-
-
         if (records.length === 0) {
             const message = document.createElement("p");
             message.textContent = "No health records found for this animal.";
             healthContainer.append(message);
 
-        }
-
-        else {
+        } else {
             for (const record of records) {
                 const recordCard = document.createElement("div");
 
@@ -829,12 +854,13 @@ async function loadHealthRecords(animalId, healthContainer) {
                 const vet = document.createElement("p");
                 vet.textContent = `Vet: ${record.vet_name || "Not provided"}`;
 
+                // Button for moving a health record to Recently Deleted.
                 const deleteButton = document.createElement("button");
 
                 deleteButton.type = "button";
                 deleteButton.textContent = "Delete Record";
 
-
+                // Soft-delete this health record after confirmation.
                 deleteButton.addEventListener("click", async () => {
 
                     const confirmed = confirm(
@@ -856,7 +882,9 @@ async function loadHealthRecords(animalId, healthContainer) {
                         const result = await response.json();
 
                         if (!response.ok) {
-                            throw new Error(result.message || "Failed to delete health record");
+                            throw new Error(
+                                result.message || "Failed to delete health record"
+                            );
                         }
 
                         alert("Health record deleted successfully!");
@@ -869,7 +897,7 @@ async function loadHealthRecords(animalId, healthContainer) {
                     }
                 });
 
-
+                // Button and container for editing this health record.
                 const editButton = document.createElement("button");
                 editButton.type = "button";
                 editButton.textContent = "Edit Record";
@@ -877,7 +905,7 @@ async function loadHealthRecords(animalId, healthContainer) {
                 const editContainer = document.createElement("div");
                 editContainer.hidden = true;
 
-
+                // Pre-fill the form with the existing health record values.
                 const editForm = document.createElement("form");
 
                 editForm.innerHTML = `
@@ -918,7 +946,7 @@ async function loadHealthRecords(animalId, healthContainer) {
 
                 editContainer.append(editForm);
 
-
+                // Toggle the health record edit form.
                 editButton.addEventListener("click", () => {
                     if (!editContainer.hidden) {
                         editContainer.hidden = true;
@@ -930,7 +958,7 @@ async function loadHealthRecords(animalId, healthContainer) {
                     editButton.textContent = "Cancel";
                 });
 
-
+                // Send updated health record data to the backend.
                 editForm.addEventListener("submit", async (event) => {
                     event.preventDefault();
 
@@ -959,7 +987,9 @@ async function loadHealthRecords(animalId, healthContainer) {
                         const result = await response.json();
 
                         if (!response.ok) {
-                            throw new Error(result.message || "Failed to update health record");
+                            throw new Error(
+                                result.message || "Failed to update health record"
+                            );
                         }
 
                         alert("Health record updated successfully!");
@@ -972,21 +1002,32 @@ async function loadHealthRecords(animalId, healthContainer) {
                     }
                 });
 
+                recordCard.append(
+                    date,
+                    symptoms,
+                    diagnosis,
+                    treatment,
+                    vet,
+                    editButton,
+                    deleteButton,
+                    editContainer
+                );
 
-
-
-
-                recordCard.append(date, symptoms, diagnosis, treatment, vet, editButton, deleteButton, editContainer);
                 healthContainer.append(recordCard);
             }
         }
+
         healthContainer.append(trashButton, trashContainer);
 
     } catch (error) {
         healthContainer.textContent = `Error: ${error.message}`;
     }
 }
-//to load recently deleted health records/trash bin 
+
+// ============================================================
+// 6. HEALTH RECORD TRASH
+// Loads deleted health records and allows the user to restore them.
+// ============================================================
 async function loadHealthTrash(animalId, trashContainer, healthContainer) {
     trashContainer.textContent = "Loading deleted health records...";
 
@@ -1038,6 +1079,7 @@ async function loadHealthTrash(animalId, trashContainer, healthContainer) {
             restoreButton.type = "button";
             restoreButton.textContent = "Restore";
 
+            // Restore the selected health record after confirmation.
             restoreButton.addEventListener("click", async () => {
                 const confirmed = confirm(
                     "Are you sure you want to restore this health record?"
@@ -1065,7 +1107,7 @@ async function loadHealthTrash(animalId, trashContainer, healthContainer) {
 
                     alert("Health record restored successfully!");
 
-                    // Refresh active health records
+                    // Refresh active health records after restoring.
                     await loadHealthRecords(animalId, healthContainer);
 
                 } catch (error) {
@@ -1074,7 +1116,14 @@ async function loadHealthTrash(animalId, trashContainer, healthContainer) {
                 }
             });
 
-            recordCard.append(date, symptoms, diagnosis, treatment, vet, restoreButton);
+            recordCard.append(
+                date,
+                symptoms,
+                diagnosis,
+                treatment,
+                vet,
+                restoreButton
+            );
 
             trashContainer.append(recordCard);
 
@@ -1089,7 +1138,11 @@ async function loadHealthTrash(animalId, trashContainer, healthContainer) {
         trashContainer.textContent = `Error: ${error.message}`;
     }
 }
-//to load a specific animal's vaccination record
+
+// ============================================================
+// 7. VACCINATION RECORDS
+// Loads active vaccination records for a selected animal.
+// ============================================================
 async function loadVaccinationRecords(animalId, vaccinationContainer) {
     vaccinationContainer.textContent = "Loading vaccination records...";
 
@@ -1104,7 +1157,6 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
             throw new Error("Failed to load vaccination records");
         }
 
-
         vaccinationContainer.replaceChildren();
 
         const heading = document.createElement("h4");
@@ -1118,15 +1170,22 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
         const trashContainer = document.createElement("div");
         trashContainer.hidden = true;
 
+        // Show or hide deleted vaccination records.
         trashButton.addEventListener("click", async () => {
             if (!trashContainer.hidden) {
                 trashContainer.hidden = true;
-                trashButton.textContent = "Recently Deleted"
+                trashButton.textContent = "Recently Deleted";
                 return;
             }
+
             trashContainer.hidden = false;
             trashButton.textContent = "Hide Recently Deleted";
-            await loadVaccinationTrashRecords(animalId, trashContainer, vaccinationContainer);
+
+            await loadVaccinationTrashRecords(
+                animalId,
+                trashContainer,
+                vaccinationContainer
+            );
         });
 
         if (records.length === 0) {
@@ -1134,9 +1193,7 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
             message.textContent = "No vaccination records found for this animal.";
             vaccinationContainer.append(message);
 
-        }
-
-        else {
+        } else {
             for (const record of records) {
                 const recordCard = document.createElement("div");
 
@@ -1147,7 +1204,8 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
                 date.textContent = `Vaccination Date: ${record.vaccination_date}`;
 
                 const dueDate = document.createElement("p");
-                dueDate.textContent = `Next Due Date: ${record.next_due_date || "Not specified"}`;
+                dueDate.textContent =
+                    `Next Due Date: ${record.next_due_date || "Not specified"}`;
 
                 const vet = document.createElement("p");
                 vet.textContent = `Vet: ${record.vet_name || "Not provided"}`;
@@ -1155,14 +1213,18 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
                 const notes = document.createElement("p");
                 notes.textContent = `Notes: ${record.notes || "None"}`;
 
+                // Button for moving a vaccination record to Recently Deleted.
                 const deleteButton = document.createElement("button");
                 deleteButton.type = "button";
                 deleteButton.textContent = "Delete Record";
 
+                // Soft-delete the selected vaccination record.
                 deleteButton.addEventListener("click", async event => {
                     event.preventDefault();
 
-                    const confirmed = confirm("Are you sure you want to DELETE the Vaccination Record?");
+                    const confirmed = confirm(
+                        "Are you sure you want to delete this vaccination record?"
+                    );
 
                     if (!confirmed) {
                         return;
@@ -1173,70 +1235,97 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
                             `${API_BASE_URL}/api/vaccinations/${record.id}`,
                             {
                                 method: "DELETE"
-                            });
-                        const result = await response.json();
-                        if (!response.ok) {
-                            throw new Error(result.message || "Faled to Delete record!")
-                        }
-                        alert("Deleted Vccination Record Succesfully");
-                        await loadVaccinationRecords(animalId, vaccinationContainer);
+                            }
+                        );
 
-                    }
-                    catch (error) {
-                        console.log(error);
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(
+                                result.message || "Failed to delete vaccination record"
+                            );
+                        }
+
+                        alert("Vaccination record deleted successfully!");
+
+                        await loadVaccinationRecords(
+                            animalId,
+                            vaccinationContainer
+                        );
+
+                    } catch (error) {
+                        console.error(error);
                         alert(error.message);
                     }
                 });
 
+                // Button and container for editing this vaccination record.
                 const editvButton = document.createElement("button");
                 editvButton.type = "button";
                 editvButton.textContent = "Edit Vaccination Record";
 
                 const editvcontainer = document.createElement("div");
                 editvcontainer.hidden = true;
+
+                // Pre-fill the form with the existing vaccination details.
                 const editvForm = document.createElement("form");
 
                 editvForm.innerHTML = `
-            <h4>Edit Vaccination Record</h4>
-            <label> Vaccine: 
-            <input type="text" name="vaccine_name" value="${record.vaccine_name}"required>
-            </label>
-            
-            <label> Vaccination Date: 
-            <input type="date" name="vaccination_date" value="${record.vaccination_date}"required>
-            </label>
-            
-            <label> Next Due Date: 
-            <input type="date" name="next_due_date" value="${record.next_due_date || ""}"required>
-            </label>
+                    <h4>Edit Vaccination Record</h4>
 
-            <label> Vet Name: 
-            <input type="text" name=""vet_name" value="${record.vet_name}"required>
-            </label>
+                    <label>
+                        Vaccine:
+                        <input type="text" name="vaccine_name"
+                            value="${record.vaccine_name}" required>
+                    </label>
 
-            <label> Notes: 
-            <input type="text" name="notes" value="${record.notes || ""}">
-            </label>
-            
-            <button type="submit">Save Changes</button>
-            </form>`;
+                    <label>
+                        Vaccination Date:
+                        <input type="date" name="vaccination_date"
+                            value="${record.vaccination_date}" required>
+                    </label>
+
+                    <label>
+                        Next Due Date:
+                        <input type="date" name="next_due_date"
+                            value="${record.next_due_date || ""}">
+                    </label>
+
+                    <label>
+                        Vet Name:
+                        <input type="text" name="vet_name"
+                            value="${record.vet_name || ""}">
+                    </label>
+
+                    <label>
+                        Notes:
+                        <input type="text" name="notes"
+                            value="${record.notes || ""}">
+                    </label>
+
+                    <button type="submit">Save Changes</button>
+                `;
 
                 editvcontainer.append(editvForm);
 
+                // Toggle the vaccination edit form.
                 editvButton.addEventListener("click", () => {
                     if (!editvcontainer.hidden) {
-                        editvButton.textContent = "Edit Vaccination Records";
+                        editvButton.textContent = "Edit Vaccination Record";
                         editvcontainer.hidden = true;
                         return;
                     }
+
                     editvButton.textContent = "Cancel";
                     editvcontainer.hidden = false;
                 });
 
+                // Send updated vaccination data to the backend.
                 editvForm.addEventListener("submit", async event => {
                     event.preventDefault();
 
                     const formData = new FormData(editvForm);
+
                     const updatedrecords = {
                         vaccine_name: formData.get("vaccine_name"),
                         vaccination_date: formData.get("vaccination_date"),
@@ -1260,40 +1349,68 @@ async function loadVaccinationRecords(animalId, vaccinationContainer) {
                         const result = await response.json();
 
                         if (!response.ok) {
-                            throw new Error(result.message || "Failed to update Vaccination record")
+                            throw new Error(
+                                result.message || "Failed to update vaccination record"
+                            );
                         }
-                        alert("Vacination Record Updated Succesfully");
 
-                        await loadVaccinationRecords(animalId, vaccinationContainer);
-                    }
-                    catch (error) {
+                        alert("Vaccination record updated successfully!");
+
+                        await loadVaccinationRecords(
+                            animalId,
+                            vaccinationContainer
+                        );
+
+                    } catch (error) {
                         console.error(error);
                         alert(error.message);
                     }
                 });
 
-                recordCard.append(vaccine, date, dueDate, vet, notes, editvButton, deleteButton, editvcontainer);
+                recordCard.append(
+                    vaccine,
+                    date,
+                    dueDate,
+                    vet,
+                    notes,
+                    editvButton,
+                    deleteButton,
+                    editvcontainer
+                );
+
                 vaccinationContainer.append(recordCard);
-
-
             }
         }
-        vaccinationContainer.append(trashButton, trashContainer);
 
+        vaccinationContainer.append(trashButton, trashContainer);
 
     } catch (error) {
         vaccinationContainer.textContent = `Error: ${error.message}`;
     }
 }
-async function loadVaccinationTrashRecords(animalID, trashContainer, vaccinationContainer) {
-    trashContainer.textContent = "Loading Deleted Vaccination Records....";
+
+// ============================================================
+// 8. VACCINATION TRASH
+// Loads deleted vaccination records and allows the user to restore them.
+// ============================================================
+async function loadVaccinationTrashRecords(
+    animalID,
+    trashContainer,
+    vaccinationContainer
+) {
+    trashContainer.textContent = "Loading Deleted Vaccination Records...";
+
     try {
-        const response = await fetch(`${API_BASE_URL}/api/animals/${animalID}/vaccinations/trash`);
+        const response = await fetch(
+            `${API_BASE_URL}/api/animals/${animalID}/vaccinations/trash`
+        );
 
         const records = await response.json();
 
         if (!response.ok) {
-            throw new Error(records.message || "Failed to load Deleted Vaccinaton records");
+            throw new Error(
+                records.message || "Failed to load deleted vaccination records"
+            );
         }
 
         trashContainer.replaceChildren();
@@ -1304,75 +1421,95 @@ async function loadVaccinationTrashRecords(animalID, trashContainer, vaccination
 
         if (records.length === 0) {
             const message = document.createElement("p");
-            message.textContent = "Trash is Empty.";
+            message.textContent = "Trash is empty.";
             trashContainer.append(message);
             return;
         }
+
         for (const record of records) {
             const recordCard = document.createElement("div");
 
             const vaccine_name = document.createElement("p");
-            vaccine_name.textContent = `Vaccine Name:${record.vaccine_name}`;
+            vaccine_name.textContent = `Vaccine Name: ${record.vaccine_name}`;
+
             const vaccination_date = document.createElement("p");
-            vaccination_date.textContent = `Vaccination Date:${record.vaccination_date}`;
+            vaccination_date.textContent =
+                `Vaccination Date: ${record.vaccination_date}`;
+
             const next_due_date = document.createElement("p");
-            next_due_date.textContent = `Next due date:${record.next_due_date || "Not provided"}`;
+            next_due_date.textContent =
+                `Next Due Date: ${record.next_due_date || "Not provided"}`;
+
             const vet_name = document.createElement("p");
-            vet_name.textContent = `Vet Name:${record.vet_name || "Not provided"}`
+            vet_name.textContent =
+                `Vet Name: ${record.vet_name || "Not provided"}`;
+
             const notes = document.createElement("p");
-            notes.textContent = `Notes:${record.notes || "Not provided"}`;
+            notes.textContent = `Notes: ${record.notes || "Not provided"}`;
+
             const restoreButton = document.createElement("button");
             restoreButton.type = "button";
             restoreButton.textContent = "Restore";
 
+            // Restore the selected vaccination record after confirmation.
             restoreButton.addEventListener("click", async () => {
-                const confirmed = confirm("Are you sure you want to restore this vaccination record");
+                const confirmed = confirm(
+                    "Are you sure you want to restore this vaccination record?"
+                );
+
                 if (!confirmed) {
                     return;
                 }
+
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/vaccination_records/${record.id}/restore`,
+                    const response = await fetch(
+                        `${API_BASE_URL}/api/vaccination_records/${record.id}/restore`,
                         {
                             method: "PATCH"
                         }
                     );
 
                     const result = await response.json();
+
                     if (!response.ok) {
                         throw new Error(
-                            result.message || "Failed to restore Vaccination Record"
+                            result.message || "Failed to restore vaccination record"
                         );
                     }
-                    alert("Vaccination Record restored Sucessfully");
 
-                    //Refresh Active vaccination records
-                    await loadVaccinationRecords(animalID, vaccinationContainer);
-                }
-                catch (error) {
+                    alert("Vaccination record restored successfully!");
+
+                    // Refresh active vaccination records after restoring.
+                    await loadVaccinationRecords(
+                        animalID,
+                        vaccinationContainer
+                    );
+
+                } catch (error) {
                     console.error(error);
                     alert(error.message);
                 }
-            }
+            });
 
+            recordCard.append(
+                vaccine_name,
+                vaccination_date,
+                next_due_date,
+                vet_name,
+                notes,
+                restoreButton
             );
 
-            recordCard.append(vaccine_name, vaccination_date, next_due_date, vet_name, notes, restoreButton);
             trashContainer.append(recordCard);
 
             if (record !== records[records.length - 1]) {
-                const seperator = document.createElement("hr");
-                trashContainer.append(seperator);
+                const separator = document.createElement("hr");
+                trashContainer.append(separator);
             }
         }
 
+    } catch (error) {
+        console.error(error);
+        trashContainer.textContent = `Error: ${error.message}`;
     }
-    catch (error) {
-        console.log(error);
-        trashContainer.textContent = `Error:${error.message}`;
-    }
-
 }
-
-
-
-
