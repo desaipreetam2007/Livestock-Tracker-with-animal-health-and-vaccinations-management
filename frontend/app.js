@@ -805,6 +805,11 @@ async function loadAnimalTrash() {
             restoreButton.type = "button";
             restoreButton.textContent = "Restore";
 
+            //Button used to permenantly delete an animal
+            const permanentDelete=document.createElement("button");
+            permanentDelete.type="button";
+            permanentDelete.textContent="Delete Permenantly";
+
             // Restore the animal when the button is clicked.
             restoreButton.addEventListener("click", async () => {
                 const confirmed = confirm(
@@ -847,8 +852,45 @@ async function loadAnimalTrash() {
                     restoreButton.textContent = "Restore";
                 }
             });
+            //Delete the Animal Permenently when the button is clicked.
+            permanentDelete.addEventListener("click", async ()=>{
+                const confirmed=confirm(`Are you sure you want to delete ${animal.name}?`);
 
-            card.append(animalName, animalDetails, restoreButton);
+                if(!confirmed){
+                    return;
+                }
+                permanentDelete.disabled.true;
+                permanentDelete.textContent="Deleting";
+
+                try{
+                    const response=await fetch(`${API_BASE_URL}/api/animals/${animal.id}/permanent`,
+                        {
+                            method:"DELETE"
+                        }
+                    );
+
+                    const result=await response.json();
+
+                    if(!response.ok){
+                        throw new Error(result.message || "Failed to Delete the Animal Permanently!");
+                    }
+                    alert(`Succesfully Deleted ${animal.name}!`);
+
+                    //refresh animals and recently deleted animals 
+                    await loadAnimals();
+                    loadAnimalTrash();
+
+                }
+                catch(error){
+                    console.error(error);
+                    alert(error.message);
+
+                    permanentDelete.disabled=false;
+                    permanentDelete.textContent="Delete Permenently";
+                }
+            });
+
+            card.append(animalName, animalDetails, restoreButton,permanentDelete);
             animalTrashContainer.append(card);
         }
 

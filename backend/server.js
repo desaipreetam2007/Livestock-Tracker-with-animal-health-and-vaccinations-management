@@ -1,20 +1,123 @@
 //Baically this file has routes i.e Url's where frontend will go and access the data
 const db = require("./database");//importing the database.js file
 const express = require("express");//importing express framework from web
+const bcrypt = require("bcrypt");//importing bcrypt which is a password hashing library
 const cors = require("cors");//
 
 const app = express();//loading express onto app variable so we can use app word instead of using 'express'
 const PORT = 3000;
 
 app.use(cors({
-    origin: ["http://127.0.0.1:3001", "http://127.0.0.1:3000", "http://127.0.0.1:8080","http://192.168.0.159:8080","http://10.123.9.1:8080"],
+    origin: ["http://127.0.0.1:3001", "http://127.0.0.1:3000", "http://127.0.0.1:8080", "http://192.168.0.159:8080", "http://10.123.9.1:8080"],
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type"]
 }));
 
 app.use(express.json());
+//user registration route/endpoint  
+app.post("/api/auth/register", async (req, res) => {
+
+    const { name, email, password } = req.body;
+
+    if (
+        typeof name !== "string" || !name.trim() ||
+        typeof email !== "string" || !email.trim() ||
+        typeof password !== "string" || password.length < 8
+    ) {
+        return res.status(400).json({
+            message: "Please provide a valid name, email and password of at least 8 characters."
+        });
+    }
 
 
+    try {
+        // Hash the password before storing it in the database.
+        const saltRounds = 10;
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+        // Insert the new farmer into the users table.
+        const result = db.prepare(`
+        INSERT INTO users (name, email, password_hash)
+        VALUES (?, ?, ?)
+    `).run(name.trim(), email.trim().toLowerCase(), passwordHash);
+
+        res.status(201).json({
+            message: "Account created successfully!",
+            userId: result.lastInsertRowid
+        });
+
+    } catch (error) {
+
+        // Check whether the email already exists.
+        if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+            return res.status(409).json({
+                message: "Email is already registered."
+            });
+        }
+
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Something went wrong during registration."
+        });
+    }
+
+});
+// User login route/endpoint
+app.post("/api/auth/login", async (req, res) => {
+
+    const { email, password } = req.body;
+
+    // Validate input.
+    if (
+        typeof email !== "string" || !email.trim() ||
+        typeof password !== "string" || !password
+    ) {
+        return res.status(400).json({
+            message: "Email and password are required."
+        });
+    }
+
+    try {
+        // Find the user using their email.
+        const user = db.prepare(`
+            SELECT * FROM users
+            WHERE email = ?
+        `).get(email.trim().toLowerCase());
+
+        // Check whether the user exists.
+        if (!user) {
+            return res.status(401).json({
+                message: "Invalid email or password."
+            });
+        }
+
+        // Compare the entered password with the stored hash.
+        const passwordMatches = await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+        if (!passwordMatches) {
+            return res.status(401).json({
+                message: "Invalid email or password."
+            });
+        }
+
+        // Login successful for now.
+        return res.status(200).json({
+            message: "Login successful!",
+            userId: user.id,
+            name: user.name
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Something went wrong during login."
+        });
+    }
+});
 //To get all the animals
 app.get("/api/animals", (req, res) => {
     const animals = db.prepare(`Select * FROM animals WHERE is_active=1`).all();
@@ -172,6 +275,68 @@ app.patch("/api/animals/:id/restore", (req, res) => {
     res.json({
         message: "Animal restored successfully!"
     });
+});
+// Permanently delete an animal and its related records.
+app.delete("/api/animals/:id/permanent", (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            message: "Invalid animal ID."
+        });
+    }
+
+    try {
+        const deleteAnimal = db.transaction(() => {
+
+            // Check whether the animal exists.
+            const animal = db.prepare(`
+                SELECT id FROM animals
+                WHERE id = ? AND is_active = 0
+            `).get(id);
+
+            if (!animal) {
+                throw new Error("Deleted animal not found.");
+            }
+
+            // Delete associated health records.
+            db.prepare(`
+                DELETE FROM health_records
+                WHERE animal_id = ?
+            `).run(id);
+
+            // Delete associated vaccination records.
+            db.prepare(`
+                DELETE FROM vaccination_records
+                WHERE animal_id = ?
+            `).run(id);
+
+            // Permanently delete the animal.
+            db.prepare(`
+                DELETE FROM animals
+                WHERE id = ?
+            `).run(id);
+        });
+
+        deleteAnimal();
+
+        res.json({
+            message: "Animal permanently deleted."
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        if (error.message === "Deleted animal not found.") {
+            return res.status(404).json({
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            message: "Failed to permanently delete animal."
+        });
+    }
 });
 //To get/retrieve the animal heath records
 app.get("/api/animals/:id/health-records", (req, res) => {
@@ -850,11 +1015,11 @@ app.patch("/api/vaccination_records/:id/restore", (req, res) => {
         SET is_active=1
         WHERE id=?
         `).run(recordId);
-    
-        res.json({
-            message:"Record restored Succesfully",
-                    id:recordId
-        });
+
+    res.json({
+        message: "Record restored Succesfully",
+        id: recordId
+    });
 
 });
 
