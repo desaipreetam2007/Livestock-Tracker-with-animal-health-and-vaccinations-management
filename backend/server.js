@@ -1,7 +1,9 @@
 //Baically this file has routes i.e Url's where frontend will go and access the data
+require("dotenv").config();//Load the environment variables
 const db = require("./database");//importing the database.js file
 const express = require("express");//importing express framework from web
 const bcrypt = require("bcrypt");//importing bcrypt which is a password hashing library
+const session = require("express-session");//importing express-session package which allows us to create and destroy sessions when a user logs in 
 const cors = require("cors");//
 
 const app = express();//loading express onto app variable so we can use app word instead of using 'express'
@@ -10,10 +12,25 @@ const PORT = 3000;
 app.use(cors({
     origin: ["http://127.0.0.1:3001", "http://127.0.0.1:3000", "http://127.0.0.1:8080", "http://192.168.0.159:8080", "http://10.123.9.1:8080"],
     methods: ["GET", "POST", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type"]
+    allowedHeaders: ["Content-Type"],
+    credentials: true
 }));
 
 app.use(express.json());
+const SQLiteStore = require("connect-sqlite3")(session);
+app.use(session({
+    store: new SQLiteStore({
+        db: "sessions.db",
+        dir: "./"
+    }),
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000
+    }
+}));
 //user registration route/endpoint  
 app.post("/api/auth/register", async (req, res) => {
 
